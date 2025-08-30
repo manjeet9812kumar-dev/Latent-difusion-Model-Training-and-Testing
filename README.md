@@ -12,7 +12,7 @@ This repo/notebook is exactly that: a **from-scratch UNet** that learns to denoi
 
 ## What you’ll find inside
 - **A pretrained VAE** (e.g. `stabilityai/sd-vae-ft-ema`) to decode latents back to images.
-- **Your UNet, built from scratch**, stitched together by `get_network(...)`.
+- **Your UNet, built from scratch**, stitched together by `get_network( )`.
 - **Clean helper functions** mirroring your notebook:
   - `sinusoidal_embedding`, `ResidualBlock`, `SpatialAttention`, `CrossAttention`
   - `DownBlock`, `UpBlock`, `get_network`
@@ -23,7 +23,7 @@ This repo/notebook is exactly that: a **from-scratch UNet** that learns to denoi
 
 ## The pipeline at a glance
 1) **Images → Latents**: we don’t train the VAE; we reuse a public one. The model sees only **latents** `z ∈ ℝ^{4×16×16}`.  
-2) **Forward (noising) process**: for each latent `x_0`, we create a noisy `x_t` at a chosen noise level.  
+2) **Forward (noising) process**: for each latent `x₀`, we create a noisy `x_t` at a chosen noise level.  
 3) **UNet predicts the clean latent**: given `(x_t, noise_level, text_embedding)`, the UNet predicts `\hat{x}_0` (our estimate of the clean latent).  
 4) **Loss**: **MAE** on latents, `|\hat{x}_0 − x_0|`.  
 5) **Sampling**: start from noise, step through decreasing noise levels, use the UNet’s guesses, and walk back to a clean latent—then decode with the VAE.
@@ -33,44 +33,30 @@ This repo/notebook is exactly that: a **from-scratch UNet** that learns to denoi
 ## The math (gentle but concrete)
 
 ### 1) Forward (noising) process — what we feed the UNet
-We use a **noise level** scalar `\alpha ∈ [0,1]` and its **signal level** `\gamma = \sqrt{1-\alpha^2}`. For a clean latent `\mathbf{x}_0` and Gaussian noise `\boldsymbol{\epsilon} \sim \mathcal{N}(0, I)`:
+We use a **noise level** scalar $\alpha \in [0,1]$ and its **signal level** $\gamma = \sqrt{1-\alpha^2}$. For a clean latent $\mathbf{x}_0$ and Gaussian noise $\boldsymbol{\epsilon} \sim \mathcal{N}(0, \mathrm{I})$:
+
 $$
-\mathbf{x}_t = \gamma\,\mathbf{x}_0 + \alpha\,\boldsymbol{\epsilon}.
+\mathbf{x}_t = \gamma \mathbf{x}_0 + \alpha \boldsymbol{\epsilon}
 $$
 
-The helper that implements this is **`add_noise(...)`**.
+The helper that implements this is **`add_noise( )`**.
 
 #### Aside: DDPM-style closed form
-Let the classic Markov forward process have variances `\beta_t` with `\alpha_t = 1-\beta_t` and `\bar{\alpha}_t=\prod_{s=1}^t \alpha_s`. Then
+Let the classic Markov forward process have variances $\beta_t$ with $\alpha_t = 1-\beta_t$ and $\bar{\alpha}_t=\prod_{s=1}^t \alpha_s$. Then
 
+![Forward Process Calculation](Images/Forward.png)
 
-
-
-$$
-q(\mathbf{x}_t\mid\mathbf{x}_0) 
-$$
-
-$$
- = \mathcal{N}\big(\sqrt{1-\beta_t}\mathbf{x}_{t-1}, \beta_t I\big)
-$$
-
-$$
-q(\mathbf{x}_t\mid\mathbf{x}_0) = \mathcal{N}\big(\sqrt{\bar{\alpha}_t}\,\mathbf{x}_0, (1-\bar{\alpha}_t) I\big)
-$$
-
-$$
-\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\,\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\,\boldsymbol{\epsilon}
-$$
-
-Our scalar **noise level** `\alpha` can be viewed as a user-friendly proxy for something like `\sqrt{1-\bar{\alpha}_t}`.
+Our scalar **noise level** $\alpha$ can be viewed as a user-friendly proxy for something like $\sqrt{1-\bar{\alpha}_t}$.
 
 ---
 
 ### 2) Conditioning — how we tell the model “where we are”
-- **Noise embedding** (`sinusoidal_embedding`) turns the scalar `\alpha` into **32 dims** using exponentially spaced frequencies `f_k`:
+- **Noise embedding** (`sinusoidal_embedding`) turns the scalar $\alpha$ into **32 dims** using exponentially spaced frequencies $f_k$:
+
 $$
-e(\alpha) = [\sin(2\pi f_1\alpha),\,\cos(2\pi f_1\alpha),\,\ldots,\,\sin(2\pi f_{16}\alpha),\,\cos(2\pi f_{16}\alpha)].
+e(\alpha) = [\sin(2\pi f_1\alpha),\ \cos(2\pi f_1\alpha),\ \ldots,\ \sin(2\pi f_{16}\alpha),\ \cos(2\pi f_{16}\alpha)]
 $$
+
 - **Text embedding** is a 512-dim vector (e.g., CLIP/other), projected to **256 dims** by a linear layer.
 
 We tile both across H×W and **concatenate** → a conditioning map with **32 + 256** channels. The UNet reads this map at every spatial location.
@@ -82,71 +68,51 @@ Built by **`get_network(latent_image_size, block_depth, emb_size, latent_channel
 
 - **`ResidualBlock`**: two convs + skip.
 - **`SpatialAttention`**: self-attention over positions with standard attention
-  $$
-  \mathrm{Attn}(Q,K,V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V.
-  $$
-- **`CrossAttention`**: **queries from image features**, **keys/values from text conditioning** (swap if your notebook used the opposite; equations stay the same).
 
-**Macro-architecture**
-- **Down path**: 128 → 256 → 512 channels (attention from stage 2 onward), `DownBlock(...)` stacks residuals + (optional) attention and downsamples.
-- **Bottleneck**: widen channels; apply spatial and cross attention.
-- **Up path**: mirror of down with `UpBlock(...)` and skip connections.
+$$
+\mathrm{Attn}(Q,K,V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V
+$$
+
+- **`CrossAttention`**: **queries from image features**, **keys/values from text conditioning** (or vice versa, depending on your implementation).
 
 ---
 
 ### 4) Objective — what we optimize
-We train to predict the clean latent `\mathbf{x}_0`:
+We train to predict the clean latent $\mathbf{x}_0$:
+
 $$
-\mathcal{L} = \left\| f_\theta(\mathbf{x}_t, \alpha, y) - \mathbf{x}_0 \right\|_1.
+\mathcal{L} = \left\| f_\theta(\mathbf{x}_t, \alpha, y) - \mathbf{x}_0 \right\|_1
 $$
 
 ---
 
 ### 5) Classifier-Free Guidance — how we push toward the text
 Use **label dropout (~15%)** during training so the model learns both conditional and unconditional behavior. At sampling, run two passes and blend:
+
 $$
-\hat{\mathbf{x}}_0 = w\,\hat{\mathbf{x}}_0^{(y)} + (1-w)\,\hat{\mathbf{x}}_0^{(\varnothing)},
+\hat{\mathbf{x}}_0 = w \hat{\mathbf{x}}_0^{(y)} + (1-w)\hat{\mathbf{x}}_0^{(\varnothing)}
 $$
-with guidance weight `w` (e.g., `class_guidance=4.0`). Implemented in **`Diffuser.predict_x_zero(...)`**.
+
+with guidance weight $w$ (e.g., `class_guidance=4.0`). Implemented in `Diffuser.predict_x_zero( )`.
 
 ---
 
 ### 6) Reverse diffusion — how we actually sample
-We use a K-step schedule (e.g., **70 steps**). For current `\alpha_i` and next `\alpha_{i+1}`:
+We use a K-step schedule (e.g., **70 steps**). For current $\alpha_i$ and next $\alpha_{i+1}$:
 
-#### (A) Update used in code (convex-mixture forward)
-Assume the per-step relation
-$$
-\mathbf{x}_i = (1-\alpha_i)\,\mathbf{x}_0 + \alpha_i\,\boldsymbol{\epsilon},\quad \boldsymbol{\epsilon}\sim\mathcal{N}(0,I).
-$$
-Estimate noise from a model prediction `\hat{\mathbf{x}}_0` and form the next latent:
-$$
-\begin{aligned}
-\boldsymbol{\epsilon} &\approx \frac{\mathbf{x}_i - (1-\alpha_i)\hat{\mathbf{x}}_0}{\alpha_i},\\
-\mathbf{x}_{i+1} &\approx (1-\alpha_{i+1})\hat{\mathbf{x}}_0 + \alpha_{i+1}\boldsymbol{\epsilon} \\
-&= \frac{\alpha_{i+1}}{\alpha_i}\,\mathbf{x}_i + \Big[1-\frac{\alpha_{i+1}}{\alpha_i}\Big]\hat{\mathbf{x}}_0 \\
-&= \boxed{\ \frac{(\alpha_i-\alpha_{i+1})\,\hat{\mathbf{x}}_0 + \alpha_{i+1}\,\mathbf{x}_i}{\alpha_i}\ }.
-\end{aligned}
-$$
-This is exactly what **`Diffuser.reverse_diffusion(...)`** computes.
-
-#### (B) General form (separate signal/noise coefficients)
-If you keep `\gamma_i=\sqrt{1-\alpha_i^2}` explicitly, the equivalent update is
-$$
-\boxed{\ \mathbf{x}_{i+1} = \frac{\alpha_{i+1}}{\alpha_i}\,\mathbf{x}_i + \Big(\gamma_{i+1} - \frac{\alpha_{i+1}\gamma_i}{\alpha_i}\Big)\,\hat{\mathbf{x}}_0\ }.
-$$
+![Reverse diffusion process calculations](Images/Reverse.png)
 
 ---
 
 ### 7) Dynamic thresholding — how we keep predictions sane
-Per sample, clip `\hat{\mathbf{x}}_0` to a high percentile of its absolute values (e.g., 99.5–99.75) and rescale to `[-1,1]`. This prevents rare spikes from derailing images. Implemented in **`dynamic_thresholding(...)`**.
+Per sample, clip $\hat{\mathbf{x}}_0$ to a high percentile of its absolute values (e.g., 99.5–99.75) and rescale to $[-1,1]$. This prevents rare spikes from derailing images. Implemented in `dynamic_thresholding( )`.
 
 ---
 
 ## How the pieces map to the code
 - **Data & Viz**
   - `decode_latents(latents, std_latent)` — VAE decode (latents → RGB)
-  - `plot_images(...)`, `imshow(...)` — small plotting helpers
+  - `plot_images( )`, `imshow( )` — small plotting helpers
 - **Math & Noise**
   - `sinusoidal_embedding(noise_levels, emb_dim=32)`
   - `add_noise(array_nhwc)`
@@ -159,7 +125,7 @@ Per sample, clip `\hat{\mathbf{x}}_0` to a high percentile of its absolute value
   - `UpBlock(in_ch, out_ch, block_depth, cond_ch, use_self_attention=True)`
   - `get_network(latent_image_size, block_depth, emb_size, latent_channels)`
 - **Sampling**
-  - `Diffuser(denoiser, class_guidance, diffusion_steps, ...)`
+  - `Diffuser(denoiser, class_guidance, diffusion_steps,  )`
     - `predict_x_zero(x_t, labels, noise_level_scalar)`
     - `reverse_diffusion(seeds_nhwc, labels_np)`
 
@@ -175,14 +141,8 @@ Per sample, clip `\hat{\mathbf{x}}_0` to a high percentile of its absolute value
 | guidance weight `w` | `4.0` (typical) |
 | diffusion steps | `70` (example) |
 
-> **Note:** If your tensors are channels-last (NHWC), keep attention blocks compatible or permute to NCHW for PyTorch ops that expect channels-first.
-
----
-
-## Rendering notes (GitHub math)
-To ensure equations render in GitHub:
-- Use single-equation blocks or wrap multi-line formulas with `\begin{aligned} ... \end{aligned}` inside `$$ ... $$`.
-- Don’t use `&` and `\\` **outside** of an aligned environment.
-- This README follows those rules so everything should display properly.
-
----
+> **GitHub math tips**  
+> • One equation = one `$$ $$` block.  
+> • No blank lines inside `$$ $$`.  
+> • Avoid `\big`, `\Big`, excessive spacing commands; prefer plain `()` or `\left(\right)`.  
+> • Use `\mathrm{I}` for identity, `\mathbf{x}` for vectors, `\boldsymbol{\epsilon}` for noise.
