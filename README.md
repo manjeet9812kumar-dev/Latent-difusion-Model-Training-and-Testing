@@ -1,7 +1,9 @@
 # Building a Latent Diffusion Model from Scratch (PyTorch)
-*A friendly walkthrough of the code, the math, and the moving parts—so you can read it like a story and still run it like a README.*
+*A friendly walkthrough of the code, the math, and the moving parts.*
 
 ---
+#Results first
+![beautiful landscape with river and flowers](output.png)
 
 ## Why latent diffusion?
 Training a diffusion model directly on 512×512 RGB images is expensive. A **latent diffusion model (LDM)** compresses each image into a small latent (here: **4×16×16**), learns to denoise *there*, and uses a pretrained VAE decoder to get back to pixels. That single idea gives you huge speed, smaller models, and far fewer GPU headaches.
