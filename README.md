@@ -26,11 +26,11 @@ This repo/notebook is exactly that: a **from-scratch UNet** that learns to denoi
 
 ---
 
-## The pipeline at a glance
+## Pipeline
 1) **Images → Latents**: we don’t train the VAE; we reuse a public one. The model sees only **latents** `z ∈ ℝ^{4×16×16}`.  
 2) **Forward (noising) process**: for each latent `x₀`, we create a noisy `x_t` at a chosen noise level.  
-3) **UNet predicts the clean latent**: given `(x_t, noise_level, text_embedding)`, the UNet predicts `\hat{x}_0` (our estimate of the clean latent).  
-4) **Loss**: **MAE** on latents, `|\hat{x}_0 − x_0|`.  
+3) **UNet predicts the clean latent**: given `(x_t, noise_level, text_embedding)`, the UNet predicts $$\hat{x}_0 $$ (our estimate of the clean latent).  
+4) **Loss**: **MAE** on latents, $$\|\hat{x}_0 − x_0\|$$.  
 5) **Sampling**: start from noise, step through decreasing noise levels, use the UNet’s guesses, and walk back to a clean latent—then decode with the VAE.
 
 ---
