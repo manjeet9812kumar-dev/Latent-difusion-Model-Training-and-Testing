@@ -132,15 +132,6 @@ Per sample, clip $\hat{\mathbf{x}}_0$ to a high percentile of its absolute value
 
 ---
 
-## Shapes & defaults (cheat sheet)
-| Name | Shape / Value |
-|---|---|
-| latent `x` | `(B, 4, 16, 16)` (channels-first) or `(B, 16, 16, 4)` (channels-last) |
-| text embedding | `(B, 512)` → linear → `(B, 256)` |
-| noise embedding | `(B, 32)` |
-| UNet hidden widths | 128 → 256 → 512 (down), mirror back up |
-| guidance weight `w` | `4.0` (typical) |
-| diffusion steps | `70` (example) |
 
 > **GitHub math tips**  
 > • One equation = one `$$ $$` block.  
