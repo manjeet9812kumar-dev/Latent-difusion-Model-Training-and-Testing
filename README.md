@@ -11,8 +11,6 @@ Inpur Prompt : "beautiful landscape with river and flowers"
 ## Why latent diffusion?
 Training a diffusion model directly on 128×128 RGB images is expensive. A **latent diffusion model (LDM)** compresses each image into a small latent (here: **4×16×16**), learns to denoise *there*, and uses a pretrained VAE decoder to get back to pixels. That single idea gives you huge speed, smaller models, and far fewer GPU headaches.
 
-This repo/notebook is exactly that: a **from-scratch UNet** that learns to denoise 4×16×16 latents, a tiny bit of attention to make it smart, and a simple sampler. No magic boxes; just the pieces you can read and tweak.
-
 ---
 
 ## What you’ll find inside
