@@ -1,4 +1,4 @@
-# Building a Latent Diffusion Model from Scratch (PyTorch)
+# Building a Latent Diffusion Model from Scratch
 ---
 
 # Results first
