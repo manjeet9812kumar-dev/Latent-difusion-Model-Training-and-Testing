@@ -1,6 +1,4 @@
 # Building a Latent Diffusion Model from Scratch (PyTorch)
-*A friendly walkthrough of the code, the math, and the moving parts.*
-
 ---
 
 # Results first
