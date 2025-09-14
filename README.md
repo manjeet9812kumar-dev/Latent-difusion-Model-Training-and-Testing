@@ -31,7 +31,7 @@ Training a diffusion model directly on 128×128 RGB images is expensive. A **lat
 
 ---
 
-## The math (gentle but concrete)
+## The math
 
 ### 1) Forward (noising) process — what we feed the UNet
 We use a **noise level** scalar $\alpha \in [0,1]$ and its **signal level** $\gamma = \sqrt{1-\alpha^2}$. For a clean latent $\mathbf{x}_0$ and Gaussian noise $\boldsymbol{\epsilon} \sim \mathcal{N}(0, \mathrm{I})$:
